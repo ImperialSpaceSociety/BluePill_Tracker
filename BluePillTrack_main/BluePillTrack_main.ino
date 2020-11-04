@@ -1,4 +1,9 @@
 
+#define RADIOPIN PB15
+
+// Uncomment this line to get serial output
+//#define SERIALDEBUG
+
 #include "SparkFun_Ublox_Arduino_Library.h" 
 SFE_UBLOX_GPS myGPS;
 long lastTime = 0; //Simple local timer. Limits amount of I2C traffic to Ublox module.
@@ -9,12 +14,27 @@ long lastTime = 0; //Simple local timer. Limits amount of I2C traffic to Ublox m
 MPU9250 IMU(Wire,0x68);
 int status;
 
+#include <string.h>
+#include "crc16.h"
+#include "radiolib.h"
+
+
+// an rtty object that handles radio transmission. Second argument sets baudrate.
+rtty Rtty(RADIOPIN,150);
+//preallocating data string
+char datastring[80];
+
+inline float roundnear(long val){ //rounds to 2 digits
+  return (roundf(val * 100) / 100);
+}
+
 void setup()
 {
   Serial.begin(115200);
-  while (!Serial); //Wait for user to open terminal
+  pinMode(RADIOPIN,OUTPUT);
+  //while (!Serial); //Wait for user to open terminal
   //////////////////////////////////////////////////////////////////////////////////////////////
-  //                                       UART for GPS
+  //                                       UART GPS
   ////////////////////////////////////////////////////////////////////////////////////////////// 
 
   //Assume that the U-Blox GPS is running at 9600 baud (the default) or at 38400 baud.
@@ -66,53 +86,77 @@ void setup()
 
 void loop()
 {
-  //Query module only every second. Doing it more often will just cause I2C traffic.
-  //The module only responds when a new position is available
-  if (millis() - lastTime > 1000)
-  {
-    lastTime = millis(); //Update the timer
-    
-    long latitude = myGPS.getLatitude();
-    Serial.print(F("Lat: "));
-    Serial.print(latitude);
 
-    long longitude = myGPS.getLongitude();
-    Serial.print(F(" Long: "));
-    Serial.print(longitude);
-    Serial.print(F(" (degrees * 10^-7)"));
+  #ifdef SERIALDEBUG
+    //Query module only every second. Doing it more often will just cause I2C traffic.
+    //The module only responds when a new position is available
+    if (millis() - lastTime > 1000)
+    {
+      lastTime = millis(); //Update the timer
+      
+      long latitude = myGPS.getLatitude();
+      Serial.print(F("Lat: "));
+      Serial.print(latitude);
 
-    long altitude = myGPS.getAltitude();
-    Serial.print(F(" Alt: "));
-    Serial.print(altitude);
-    Serial.print(F(" (mm)"));
+      long longitude = myGPS.getLongitude();
+      Serial.print(F(" Long: "));
+      Serial.print(longitude);
+      Serial.print(F(" (degrees * 10^-7)"));
 
-    byte SIV = myGPS.getSIV();
-    Serial.print(F(" SIV: "));
-    Serial.print(SIV);
+      long altitude = myGPS.getAltitude();
+      Serial.print(F(" Alt: "));
+      Serial.print(altitude);
+      Serial.print(F(" (mm)"));
 
-    Serial.println();
-    IMU.readSensor();
-    // display the data
-    Serial.print(IMU.getAccelX_mss(),3);
-    Serial.print("\t");
-    Serial.print(IMU.getAccelY_mss(),3);
-    Serial.print("\t");
-    Serial.print(IMU.getAccelZ_mss(),3);
-    Serial.print("\t");
-    Serial.print(IMU.getGyroX_rads(),3);
-    Serial.print("\t");
-    Serial.print(IMU.getGyroY_rads(),3);
-    Serial.print("\t");
-    Serial.print(IMU.getGyroZ_rads(),3);
-    Serial.print("\t");
-    Serial.print(IMU.getMagX_uT(),3);
-    Serial.print("\t");
-    Serial.print(IMU.getMagY_uT(),3);
-    Serial.print("\t");
-    Serial.print(IMU.getMagZ_uT(),3);
-    Serial.print("\t");
-    Serial.println(IMU.getTemperature_C(),3);
+      byte SIV = myGPS.getSIV();
+      Serial.print(F(" SIV: "));
+      Serial.print(SIV);
 
-  }
+      Serial.println();
+
+      // read imu
+      IMU.readSensor();
+      // display the data
+      Serial.print(IMU.getAccelX_mss(),3);
+      Serial.print("\t");
+      Serial.print(IMU.getAccelY_mss(),3);
+      Serial.print("\t");
+      Serial.print(IMU.getAccelZ_mss(),3);
+      Serial.print("\t");
+      Serial.print(IMU.getGyroX_rads(),3);
+      Serial.print("\t");
+      Serial.print(IMU.getGyroY_rads(),3);
+      Serial.print("\t");
+      Serial.print(IMU.getGyroZ_rads(),3);
+      Serial.print("\t");
+      Serial.print(IMU.getMagX_uT(),3);
+      Serial.print("\t");
+      Serial.print(IMU.getMagY_uT(),3);
+      Serial.print("\t");
+      Serial.print(IMU.getMagZ_uT(),3);
+      Serial.print("\t");
+      Serial.println(IMU.getTemperature_C(),3);
+    }
+  #else
+    if (millis() - lastTime > 1000){
+      lastTime = millis(); //Update the timer
+      long latitude = myGPS.getLatitude();
+      long longitude = myGPS.getLongitude();
+      long altitude = myGPS.getAltitude();
+      byte SIV = myGPS.getSIV();
+      String predata;
+      predata+=round(latitude);
+      predata+=round(longitude);
+      predata+=roundnear(altitude/1000);
+      predata+=SIV;
+      sprintf(datastring,predata.c_str()); // Puts the data in the datastring
+      unsigned int CHECKSUM = gps_CRC16_checksum(datastring);  // Calculates the checksum for this datastring
+      char checksum_str[6];
+      sprintf(checksum_str, "*%04X\n", CHECKSUM);
+      strcat(datastring,checksum_str);
+      Rtty.rtty_txstring (datastring);
+      delay(100);
+    }
+  #endif
 }
 

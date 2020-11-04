@@ -6,7 +6,7 @@
  
 char datastring[80];
 
-rtty Rtty(RADIOPIN,300);
+rtty Rtty(RADIOPIN,150);
  
 void setup() {                
   pinMode(RADIOPIN,OUTPUT);
@@ -21,7 +21,7 @@ void loop() {
   strcat(datastring,checksum_str);
  
   Rtty.rtty_txstring (datastring);
-  delay(2000);
+  delay(100);
 }
  
  
