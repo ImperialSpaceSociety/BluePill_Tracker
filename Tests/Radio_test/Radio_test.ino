@@ -1,25 +1,27 @@
-/*  NTX2 Radio Test Part 2
- 
-    Transmits data via RTTY with a checksum.
- 
-    Created 2012 by M0UPU as part of a UKHAS Guide on linking NTX2 Modules to Arduino.
-    RTTY code from Rob Harrison Icarus Project. 
-    http://ukhas.org.uk
-*/ 
- 
 #define RADIOPIN PB15
  
 #include <string.h>
-#include "rtty.h"
+#include "crc16.h"
+#include "radiolib.h"
  
+char datastring[80];
 
-RTTY rtty(RADIOPIN, 50, 1.5, CHECKSUM_CRC16);
+rtty Rtty(RADIOPIN,300);
  
 void setup() {                
   pinMode(RADIOPIN,OUTPUT);
 }
  
 void loop() {
-  rtty.transmit("test-transmission!!!$$$\n");
+ 
+  sprintf(datastring,"RTTY TEST BEACON RTTY TEST BEACON"); // Puts the text in the datastring
+  unsigned int CHECKSUM = gps_CRC16_checksum(datastring);  // Calculates the checksum for this datastring
+  char checksum_str[6];
+  sprintf(checksum_str, "*%04X\n", CHECKSUM);
+  strcat(datastring,checksum_str);
+ 
+  Rtty.rtty_txstring (datastring);
   delay(2000);
 }
+ 
+ 
