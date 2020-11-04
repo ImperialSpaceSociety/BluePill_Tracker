@@ -1,37 +1,21 @@
 
-/*
-  Reading lat and long via UBX binary commands using UART @38400 baud - free from I2C
-  By: Nathan Seidle, Adapted from Example3_GetPosition by Thorsten von Eicken
-  SparkFun Electronics
-  Date: January 28rd, 2019
-  License: MIT. See license file for more information but you can
-  basically do whatever you want with this code.
-  This example shows how to configure the library and U-Blox for serial port use as well as
-  switching the module from the default 9600 baud to 38400.
-  Note: Long/lat are large numbers because they are * 10^7. To convert lat/long
-  to something google maps understands simply divide the numbers by 10,000,000. We 
-  do this so that we don't have to use floating point numbers.
-  Leave NMEA parsing behind. Now you can simply ask the module for the datums you want!
-  Feel like supporting open source hardware?
-  Buy a board from SparkFun!
-  ZED-F9P RTK2: https://www.sparkfun.com/products/15136
-  NEO-M8P RTK: https://www.sparkfun.com/products/15005
-  SAM-M8Q: https://www.sparkfun.com/products/15106
-  Hardware Connections:
-  Connect the U-Blox serial TX pin to Uno pin 10
-  Connect the U-Blox serial RX pin to Uno pin 11
-  Open the serial monitor at 115200 baud to see the output
-*/
-
 #include "SparkFun_Ublox_Arduino_Library.h" //http://librarymanager/All#SparkFun_Ublox_GPS
 SFE_UBLOX_GPS myGPS;
 long lastTime = 0; //Simple local timer. Limits amount of I2C traffic to Ublox module.
+
+#include "MPU9250.h"
+
+// an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
+MPU9250 IMU(Wire,0x68);
+int status;
 
 void setup()
 {
   Serial.begin(115200);
   while (!Serial); //Wait for user to open terminal
-  Serial.println("SparkFun Ublox Example");
+  
+  //                                    UART for GPS
+  ////////////////////////////////////////////////////////////////////////////////////////////// 
 
   //Assume that the U-Blox GPS is running at 9600 baud (the default) or at 38400 baud.
   //Loop until we're in sync and then ensure it's at 38400 baud.
@@ -48,7 +32,6 @@ void setup()
         myGPS.setSerialRate(38400);
         delay(100);
     } else {
-        //myGPS.factoryReset();
         delay(2000); //Wait a bit before trying again to limit the Serial output
     }
   } while(1);
@@ -57,6 +40,29 @@ void setup()
   myGPS.setUART1Output(COM_TYPE_UBX); //Set the UART port to output UBX only
   myGPS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
   myGPS.saveConfiguration(); //Save the current settings to flash and BBR
+
+  ////////////////////////////////////////////////////////////////////////////////////////////// 
+
+  //                                      I2C ACCELEROMETER
+  ////////////////////////////////////////////////////////////////////////////////////////////// 
+  // start communication with IMU 
+  status = IMU.begin();
+  if (status < 0) {
+    Serial.println("IMU initialization unsuccessful");
+    Serial.println("Check IMU wiring or try cycling power");
+    Serial.print("Status: ");
+    Serial.println(status);
+    while(1) {}
+  }
+  // setting the accelerometer full scale range to +/-8G 
+  IMU.setAccelRange(MPU9250::ACCEL_RANGE_8G);
+  // setting the gyroscope full scale range to +/-500 deg/s
+  IMU.setGyroRange(MPU9250::GYRO_RANGE_500DPS);
+  // setting DLPF bandwidth to 5 Hz
+  IMU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_5HZ);
+  // setting SRD to 99 for a 10 Hz (1000/(1+99)) update rate. Must be >= 2dlpf_bandwith
+  IMU.setSrd(99);
+  ////////////////////////////////////////////////////////////////////////////////////////////// 
 }
 
 void loop()
@@ -86,6 +92,28 @@ void loop()
     Serial.print(SIV);
 
     Serial.println();
+    IMU.readSensor();
+    // display the data
+    Serial.print(IMU.getAccelX_mss(),3);
+    Serial.print("\t");
+    Serial.print(IMU.getAccelY_mss(),3);
+    Serial.print("\t");
+    Serial.print(IMU.getAccelZ_mss(),3);
+    Serial.print("\t");
+    Serial.print(IMU.getGyroX_rads(),3);
+    Serial.print("\t");
+    Serial.print(IMU.getGyroY_rads(),3);
+    Serial.print("\t");
+    Serial.print(IMU.getGyroZ_rads(),3);
+    Serial.print("\t");
+    Serial.print(IMU.getMagX_uT(),3);
+    Serial.print("\t");
+    Serial.print(IMU.getMagY_uT(),3);
+    Serial.print("\t");
+    Serial.print(IMU.getMagZ_uT(),3);
+    Serial.print("\t");
+    Serial.println(IMU.getTemperature_C(),3);
+
   }
 }
 
