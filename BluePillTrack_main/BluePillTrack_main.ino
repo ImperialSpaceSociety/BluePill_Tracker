@@ -1,5 +1,5 @@
 
-#include "SparkFun_Ublox_Arduino_Library.h" //http://librarymanager/All#SparkFun_Ublox_GPS
+#include "SparkFun_Ublox_Arduino_Library.h" 
 SFE_UBLOX_GPS myGPS;
 long lastTime = 0; //Simple local timer. Limits amount of I2C traffic to Ublox module.
 
@@ -13,8 +13,8 @@ void setup()
 {
   Serial.begin(115200);
   while (!Serial); //Wait for user to open terminal
-  
-  //                                    UART for GPS
+  //////////////////////////////////////////////////////////////////////////////////////////////
+  //                                       UART for GPS
   ////////////////////////////////////////////////////////////////////////////////////////////// 
 
   //Assume that the U-Blox GPS is running at 9600 baud (the default) or at 38400 baud.
@@ -42,8 +42,7 @@ void setup()
   myGPS.saveConfiguration(); //Save the current settings to flash and BBR
 
   ////////////////////////////////////////////////////////////////////////////////////////////// 
-
-  //                                      I2C ACCELEROMETER
+  //                                    I2C ACCELEROMETER
   ////////////////////////////////////////////////////////////////////////////////////////////// 
   // start communication with IMU 
   status = IMU.begin();
