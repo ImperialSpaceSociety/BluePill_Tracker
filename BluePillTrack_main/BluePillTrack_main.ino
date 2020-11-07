@@ -1,23 +1,25 @@
 
-#define RADIOPIN PA8
 
 // Uncomment this line to get serial output
-//#define SERIALDEBUG
+#define SERIALDEBUG
+
+#define RADIOPIN PA8
+
+#include "mywatchdog.h"
+
 
 #include "SparkFun_Ublox_Arduino_Library.h" 
 SFE_UBLOX_GPS myGPS;
 long lastTime = 0; //Simple local timer. Limits amount of I2C traffic to Ublox module.
 
-#include "MPU9250.h"
 
+#include "MPU9250.h"
 // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
 MPU9250 IMU(Wire,0x68);
 int status;
 
 #include "crc16.h"
 #include "radiolib.h"
-
-
 // an rtty object that handles radio transmission. Second argument sets baudrate.
 rtty Rtty(RADIOPIN,150);
 //preallocating data string
@@ -31,14 +33,19 @@ void setup()
 {
   Serial.begin(115200);
   pinMode(RADIOPIN,OUTPUT);
-  //while (!Serial); //Wait for user to open terminal
+#ifdef SERIALDEBUG
+  while (!Serial); //Wait for user to open terminal
+#endif
+  //                                      Watchdog
+  //////////////////////////////////////////////////////////////////////////////////////////////
+  iwdg_init(IWDG_PRE_64,8000); // a bit less than 5 seconds of watchdog timer. Leave at IWDG_PRE_32!
   //////////////////////////////////////////////////////////////////////////////////////////////
   //                                       UART GPS
   ////////////////////////////////////////////////////////////////////////////////////////////// 
-
   //Assume that the U-Blox GPS is running at 9600 baud (the default) or at 38400 baud.
   //Loop until we're in sync and then ensure it's at 38400 baud.
   do {
+    iwdg_feed();
     Serial.println("GPS: trying 38400 baud");
     Serial1.begin(38400);
     if (myGPS.begin(Serial1) == true) break;
@@ -55,6 +62,7 @@ void setup()
     }
   } while(1);
   Serial.println("GPS serial connected");
+  iwdg_feed();
 
   myGPS.setUART1Output(COM_TYPE_UBX); //Set the UART port to output UBX only
   myGPS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
@@ -65,6 +73,7 @@ void setup()
   ////////////////////////////////////////////////////////////////////////////////////////////// 
   // start communication with IMU 
   status = IMU.begin();
+  iwdg_feed();
   if (status < 0) {
     Serial.println("IMU initialization unsuccessful");
     Serial.println("Check IMU wiring or try cycling power");
@@ -85,7 +94,7 @@ void setup()
 
 void loop()
 {
-
+  iwdg_feed();
   #ifdef SERIALDEBUG
     //Query module only every second. Doing it more often will just cause I2C traffic.
     //The module only responds when a new position is available
@@ -154,7 +163,6 @@ void loop()
       sprintf(checksum_str, "*%04X\n", CHECKSUM);
       strcat(datastring,checksum_str);
       Rtty.rtty_txstring (datastring);
-      delay(100);
     }
   #endif
 }

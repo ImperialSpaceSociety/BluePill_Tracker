@@ -13,7 +13,7 @@ uint16_t _crc_xmodem_update (uint16_t crc, uint8_t data) {
 }
 
 uint16_t gps_CRC16_checksum (char *string)
-    {
+{
     size_t i;
     uint16_t crc;
     uint8_t c;
@@ -28,4 +28,4 @@ uint16_t gps_CRC16_checksum (char *string)
     }
     
     return crc;
-    }    
+}    
