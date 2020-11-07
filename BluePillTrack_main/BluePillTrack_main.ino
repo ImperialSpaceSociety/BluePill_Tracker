@@ -1,5 +1,5 @@
 
-#define RADIOPIN PB15
+#define RADIOPIN PA8
 
 // Uncomment this line to get serial output
 //#define SERIALDEBUG
@@ -14,7 +14,6 @@ long lastTime = 0; //Simple local timer. Limits amount of I2C traffic to Ublox m
 MPU9250 IMU(Wire,0x68);
 int status;
 
-#include <string.h>
 #include "crc16.h"
 #include "radiolib.h"
 
@@ -159,4 +158,3 @@ void loop()
     }
   #endif
 }
-
