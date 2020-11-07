@@ -75,7 +75,7 @@ void setup() {
 
   // since we're just testing if the card is working!
 
-  if (!card.init(SPI_HALF_SPEED, chipSelect)) {
+  if (!card.init(SPI_FULL_SPEED, chipSelect)) {
 
     Serial.println("initialization failed. Things to check:");
 
@@ -187,23 +187,7 @@ void setup() {
 
   root.close();
 
-  Serial.println();
-
-  File dataFile = SD.open("fixup.dat");
-
-  // if the file is available, write to it:
-
-  if (dataFile) {
-
-    Serial.println("Exists!");
-
-  }
-  else{
-    Serial.println("File not found.");
-  }
 }
 
 void loop(void) {
-  Serial.print(" ");
-  delay(1000);
 }
